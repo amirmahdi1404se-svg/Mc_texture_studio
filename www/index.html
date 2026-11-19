@@ -1,1 +1,588 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MC Texture & Skin Studio</title>
+  <style>
+    :root {
+      --bg-dark: #070b14;
+      --navy-deep: #0d1526;
+      --glass-bg: rgba(20, 30, 52, 0.55);
+      --glass-border: rgba(255, 255, 255, 0.14);
+      --glass-highlight: rgba(255, 255, 255, 0.06);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.2);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 12px;
+      background: radial-gradient(circle at 15% 15%, #162447 0%, var(--bg-dark) 65%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-x: hidden;
+    }
+
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 var(--glass-highlight);
+      border-radius: 18px;
+    }
+
+    header {
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      font-weight: 600;
+    }
+
+    .templates {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .tpl-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      padding: 8px 4px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .tpl-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .canvas-wrapper {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .canvas-frame {
+      position: relative;
+      padding: 8px;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--glass-border);
+    }
+
+    canvas {
+      display: block;
+      width: 272px;
+      height: 272px;
+      image-rendering: pixelated;
+      background-image:
+        linear-gradient(45deg, #161e31 25%, transparent 25%),
+        linear-gradient(-45deg, #161e31 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #161e31 75%),
+        linear-gradient(-45deg, transparent 75%, #161e31 75%);
+      background-size: 34px 34px;
+      background-position: 0 0, 0 17px, 17px -17px, -17px 0;
+      border-radius: 8px;
+      touch-action: none;
+    }
+
+    .tools-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .tool-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .tool-btn.active {
+      background: var(--accent);
+      color: #06101d;
+      font-weight: 700;
+      border-color: var(--accent);
+    }
+
+    .palette-box {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .colors-grid {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 6px;
+      align-items: center;
+    }
+
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+    }
+
+    .swatch.selected {
+      transform: scale(1.12);
+      border-color: #fff;
+      box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 30px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .export-card {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .pack-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      background: rgba(0, 0, 0, 0.35);
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #04101c;
+      font-weight: 800;
+      font-size: 0.9rem;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.35);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    #status {
+      font-size: 0.78rem;
+      color: var(--accent);
+      text-align: center;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="glass">
+    <h1>MC Texture Studio</h1>
+    <span class="badge">Java 1.8.8 / 1.8.9</span>
+  </header>
+
+  <section class="glass templates">
+    <button class="tpl-btn active" data-tpl="sword">شمشیر</button>
+    <button class="tpl-btn" data-tpl="wool">بلاک پشم</button>
+    <button class="tpl-btn" data-tpl="fireball">فایربال</button>
+    <button class="tpl-btn" data-tpl="skin">سر اسکین</button>
+  </section>
+
+  <main class="glass canvas-wrapper">
+    <div class="canvas-frame">
+      <canvas id="pixelCanvas" width="16" height="16"></canvas>
+    </div>
+
+    <div class="tools-row">
+      <button class="tool-btn active" id="toolPen">قلم</button>
+      <button class="tool-btn" id="toolFill">سطل رنگ</button>
+      <button class="tool-btn" id="toolEraser">پاک‌کن</button>
+      <button class="tool-btn" id="toolGrid">خطوط: روشن</button>
+      <button class="tool-btn" id="toolClear">پاکسازی</button>
+    </div>
+  </main>
+
+  <section class="glass palette-box">
+    <div class="colors-grid" id="palette"></div>
+  </section>
+
+  <section class="glass export-card">
+    <input type="text" id="packName" class="pack-input" value="Bedwars_Custom_16x" placeholder="نام ریسورس پک..." />
+    <button class="btn-primary" id="exportZipBtn">ساخت و دانلود فایل ZIP استاندارد (1.8.9)</button>
+    <div id="status">آماده ویرایش تکسچر 16x16</div>
+  </section>
+
+  <script>
+    const GRID_SIZE = 16;
+    const canvas = document.getElementById('pixelCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const statusEl = document.getElementById('status');
+
+    let currentTool = 'pen';
+    let currentColor = '#38bdf8';
+    let showGrid = true;
+    let currentTemplate = 'sword';
+    let isDrawing = false;
+
+    // ذخیره وضعیت جداگانه برای هر آیتم در یک پک واحد
+    const textures = {
+      sword: createEmptyGrid(),
+      wool: createEmptyGrid(),
+      fireball: createEmptyGrid(),
+      skin: createEmptyGrid()
+    };
+
+    const mcPaths = {
+      sword: 'assets/minecraft/textures/items/diamond_sword.png',
+      wool: 'assets/minecraft/textures/blocks/wool_colored_red.png',
+      fireball: 'assets/minecraft/textures/items/fireball.png',
+      skin: 'assets/minecraft/textures/entity/steve.png'
+    };
+
+    function createEmptyGrid() {
+      return Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+    }
+
+    // بارگذاری قالب‌های اولیه پیکسلی
+    function initTemplates() {
+      // قالب شمشیر
+      const s = textures.sword;
+      const blade = '#38bdf8', edge = '#bae6fd', hilt = '#1e293b', handle = '#92400e';
+      for (let i = 2; i <= 11; i++) {
+        s[15 - i][i] = blade;
+        if (i < 11) s[14 - i][i] = edge;
+        if (i > 2) s[15 - i][i + 1] = '#0284c7';
+      }
+      s[11][2] = hilt; s[12][3] = hilt; s[13][4] = hilt; s[10][1] = hilt; s[14][5] = hilt;
+      s[13][2] = handle; s[14][1] = handle;
+
+      // قالب پشم
+      const w = textures.wool;
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          const border = x === 0 || y === 0 || x === 15 || y === 15;
+          w[y][x] = border ? '#991b1b' : ((x + y) % 3 === 0 ? '#dc2626' : '#ef4444');
+        }
+      }
+
+      // قالب فایربال
+      const f = textures.fireball;
+      for (let y = 3; y < 13; y++) {
+        for (let x = 3; x < 13; x++) {
+          const dist = Math.hypot(x - 7.5, y - 7.5);
+          if (dist < 2.8) f[y][x] = '#fef08a';
+          else if (dist < 4.5) f[y][x] = '#f97316';
+          else if (dist < 5.6) f[y][x] = '#dc2626';
+        }
+      }
+
+      // قالب سر اسکین
+      const sk = textures.skin;
+      for (let y = 2; y < 14; y++) {
+        for (let x = 2; x < 14; x++) {
+          sk[y][x] = y < 5 ? '#1e293b' : '#f5cba7';
+        }
+      }
+      sk[8][4] = '#ffffff'; sk[8][5] = '#2563eb';
+      sk[8][10] = '#2563eb'; sk[8][11] = '#ffffff';
+      sk[11][6] = '#92400e'; sk[11][7] = '#92400e'; sk[11][8] = '#92400e'; sk[11][9] = '#92400e';
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
+      const grid = textures[currentTemplate];
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (grid[y][x]) {
+            ctx.fillStyle = grid[y][x];
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+    }
+
+    function getCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const x = Math.floor(((clientX - rect.left) / rect.width) * GRID_SIZE);
+      const y = Math.floor(((clientY - rect.top) / rect.height) * GRID_SIZE);
+      return {
+        x: Math.max(0, Math.min(GRID_SIZE - 1, x)),
+        y: Math.max(0, Math.min(GRID_SIZE - 1, y))
+      };
+    }
+
+    function floodFill(x, y, targetColor, replacementColor) {
+      if (targetColor === replacementColor) return;
+      const grid = textures[currentTemplate];
+      const stack = [[x, y]];
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        if (cx < 0 || cy < 0 || cx >= GRID_SIZE || cy >= GRID_SIZE) continue;
+        if (grid[cy][cx] !== targetColor) continue;
+        grid[cy][cx] = replacementColor;
+        stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+      }
+    }
+
+    function applyTool(e) {
+      const { x, y } = getCoords(e);
+      const grid = textures[currentTemplate];
+      if (currentTool === 'pen') {
+        grid[y][x] = currentColor;
+      } else if (currentTool === 'eraser') {
+        grid[y][x] = null;
+      } else if (currentTool === 'fill') {
+        floodFill(x, y, grid[y][x], currentColor);
+      }
+      render();
+    }
+
+    canvas.addEventListener('pointerdown', (e) => { isDrawing = true; applyTool(e); });
+    canvas.addEventListener('pointermove', (e) => { if (isDrawing && currentTool !== 'fill') applyTool(e); });
+    window.addEventListener('pointerup', () => { isDrawing = false; });
+
+    // پالت رنگ
+    const presetColors = ['#38bdf8', '#0284c7', '#ef4444', '#f97316', '#facc15', '#22c55e', '#a855f7', '#ffffff', '#0f172a', '#92400e', '#f5cba7', '#94a3b8', '#ec4899', '#14b8a6', '#6366f1', '#000000'];
+    const paletteEl = document.getElementById('palette');
+    presetColors.forEach((col, idx) => {
+      const btn = document.createElement('div');
+      btn.className = 'swatch' + (idx === 0 ? ' selected' : '');
+      btn.style.background = col;
+      btn.onclick = () => {
+        document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+        btn.classList.add('selected');
+        currentColor = col;
+        setTool('pen');
+      };
+      paletteEl.appendChild(btn);
+    });
+
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.value = currentColor;
+    colorPicker.oninput = (e) => { currentColor = e.target.value; setTool('pen'); };
+    paletteEl.appendChild(colorPicker);
+
+    function setTool(tool) {
+      currentTool = tool;
+      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      if (tool === 'pen') document.getElementById('toolPen').classList.add('active');
+      if (tool === 'fill') document.getElementById('toolFill').classList.add('active');
+      if (tool === 'eraser') document.getElementById('toolEraser').classList.add('active');
+    }
+
+    document.getElementById('toolPen').onclick = () => setTool('pen');
+    document.getElementById('toolFill').onclick = () => setTool('fill');
+    document.getElementById('toolEraser').onclick = () => setTool('eraser');
+    document.getElementById('toolClear').onclick = () => {
+      textures[currentTemplate] = createEmptyGrid();
+      render();
+      statusEl.textContent = 'بوم فعلی پاک شد';
+    };
+
+    document.getElementById('toolGrid').onclick = (e) => {
+      showGrid = !showGrid;
+      e.target.textContent = showGrid ? 'خطوط: روشن' : 'خطوط: خاموش';
+      canvas.style.backgroundSize = showGrid ? '34px 34px' : '0 0';
+    };
+
+    document.querySelectorAll('.tpl-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.tpl-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTemplate = btn.dataset.tpl;
+        render();
+        statusEl.textContent = 'در حال ویرایش: ' + btn.textContent;
+      };
+    });
+
+    // تبدیل گرید به بایت‌های PNG بدون نیاز به کتابخانه
+    function gridToPngBytes(grid) {
+      const off = document.createElement('canvas');
+      off.width = 16; off.height = 16;
+      const octx = off.getContext('2d');
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          if (grid[y][x]) {
+            octx.fillStyle = grid[y][x];
+            octx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+      const dataUrl = off.toDataURL('image/png');
+      const base64 = dataUrl.split(',')[1];
+      const bin = atob(base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes;
+    }
+
+    // موتور داخلی ساخت فایل ZIP استاندارد (بدون وابستگی خارجی)
+    function buildZip(files) {
+      const encoder = new TextEncoder();
+      const crcTable = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        crcTable[i] = c;
+      }
+      function crc32(data) {
+        let crc = -1;
+        for (let i = 0; i < data.length; i++) crc = (crc >>> 8) ^ crcTable[(crc ^ data[i]) & 0xff];
+        return (crc ^ -1) >>> 0;
+      }
+
+      const chunks = [];
+      const centralDir = [];
+      let offset = 0;
+
+      for (const file of files) {
+        const nameBytes = encoder.encode(file.name);
+        const data = typeof file.content === 'string' ? encoder.encode(file.content) : file.content;
+        const crc = crc32(data);
+
+        const header = new Uint8Array(30 + nameBytes.length);
+        const hv = new DataView(header.buffer);
+        hv.setUint32(0, 0x04034b50, true);
+        hv.setUint16(4, 20, true);
+        hv.setUint16(8, 0, true);
+        hv.setUint32(14, crc, true);
+        hv.setUint32(18, data.length, true);
+        hv.setUint32(22, data.length, true);
+        hv.setUint16(26, nameBytes.length, true);
+        header.set(nameBytes, 30);
+
+        chunks.push(header, data);
+
+        const cd = new Uint8Array(46 + nameBytes.length);
+        const cv = new DataView(cd.buffer);
+        cv.setUint32(0, 0x02014b50, true);
+        cv.setUint16(4, 20, true);
+        cv.setUint16(6, 20, true);
+        cv.setUint32(16, crc, true);
+        cv.setUint32(20, data.length, true);
+        cv.setUint32(24, data.length, true);
+        cv.setUint16(28, nameBytes.length, true);
+        cv.setUint32(42, offset, true);
+        cd.set(nameBytes, 46);
+        centralDir.push(cd);
+
+        offset += header.length + data.length;
+      }
+
+      const cdSize = centralDir.reduce((s, a) => s + a.length, 0);
+      const eocd = new Uint8Array(22);
+      const ev = new DataView(eocd.buffer);
+      ev.setUint32(0, 0x06054b50, true);
+      ev.setUint16(8, files.length, true);
+      ev.setUint16(10, files.length, true);
+      ev.setUint32(12, cdSize, true);
+      ev.setUint32(16, offset, true);
+
+      return new Blob([...chunks, ...centralDir, eocd], { type: 'application/zip' });
+    }
+
+    document.getElementById('exportZipBtn').onclick = () => {
+      try {
+        const rawName = document.getElementById('packName').value.trim() || 'MC_Pack_1_8_9';
+        const safeName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        // pack_format: 1 مخصوص نسخه 1.8.8 و 1.8.9 ماینکرفت جاوا
+        const mcmeta = JSON.stringify({
+          pack: {
+            pack_format: 1,
+            description: `${safeName} - Created with MC Texture Studio`
+          }
+        }, null, 2);
+
+        const zipFiles = [
+          { name: 'pack.mcmeta', content: mcmeta },
+          { name: 'pack.png', content: gridToPngBytes(textures.sword) },
+          { name: mcPaths.sword, content: gridToPngBytes(textures.sword) },
+          { name: mcPaths.wool, content: gridToPngBytes(textures.wool) },
+          { name: mcPaths.fireball, content: gridToPngBytes(textures.fireball) },
+          { name: mcPaths.skin, content: gridToPngBytes(textures.skin) }
+        ];
+
+        const blob = buildZip(zipFiles);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeName}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        statusEl.textContent = `فایل ${safeName}.zip ساخته و در پوشه Download ذخیره شد!`;
+      } catch (err) {
+        statusEl.textContent = 'خطا در ساخت پک: ' + err.message;
+      }
+    };
+
+    initTemplates();
+    render();
+  </script>
+</body>
+</html>
 
