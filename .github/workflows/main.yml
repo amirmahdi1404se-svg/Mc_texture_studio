@@ -24,9 +24,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Capacitor & Initialize Android
         run: |
           npm install
@@ -42,8 +39,6 @@ jobs:
           cat << 'EOF' > "$MAIN_ACTIVITY"
           package com.mctexture.studio;
 
-          import android.app.DownloadManager;
-          import android.net.Uri;
           import android.os.Bundle;
           import android.os.Environment;
           import android.util.Base64;
