@@ -1,1 +1,114 @@
+name: Build Minecraft Studio APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor & Initialize Android
+        run: |
+          npm install
+          npx cap init "MC Texture Studio" "com.mctexture.studio" --web-dir=www
+          npx cap add android
+
+      - name: Enable Blob/ZIP Downloads & Permissions in Android WebView
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's/<application/<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" \/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" \/>\n    <application/' "$MANIFEST"
+
+          MAIN_ACTIVITY=$(find android/app/src/main/java -name "MainActivity.java")
+          cat << 'EOF' > "$MAIN_ACTIVITY"
+          package com.mctexture.studio;
+
+          import android.app.DownloadManager;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.util.Base64;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebView;
+          import android.widget.Toast;
+          import com.getcapacitor.BridgeActivity;
+          import java.io.File;
+          import java.io.FileOutputStream;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  WebView webView = getBridge().getWebView();
+                  webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+                      if (url.startsWith("blob:")) {
+                          String js = "javascript:(function(){" +
+                              "var xhr = new XMLHttpRequest();" +
+                              "xhr.open('GET', '" + url + "', true);" +
+                              "xhr.responseType = 'blob';" +
+                              "xhr.onload = function() {" +
+                              "  var reader = new FileReader();" +
+                              "  reader.readAsDataURL(xhr.response);" +
+                              "  reader.onloadend = function() {" +
+                              "    AndroidDownloader.saveBase64(reader.result, 'MC_Texture_Pack_1_8_9.zip');" +
+                              "  };" +
+                              "};" +
+                              "xhr.send();" +
+                              "})()";
+                          webView.loadUrl(js);
+                      }
+                  });
+                  webView.addJavascriptInterface(new Object() {
+                      @JavascriptInterface
+                      public void saveBase64(String base64Data, String fileName) {
+                          try {
+                              String pureBase64 = base64Data.substring(base64Data.indexOf(",") + 1);
+                              byte[] bytes = Base64.decode(pureBase64, Base64.DEFAULT);
+                              File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                              if (!path.exists()) path.mkdirs();
+                              File file = new File(path, fileName);
+                              FileOutputStream fos = new FileOutputStream(file);
+                              fos.write(bytes);
+                              fos.close();
+                              runOnUiThread(() -> Toast.makeText(MainActivity.this, "ذخیره شد در Downloads: " + fileName, Toast.LENGTH_LONG).show());
+                          } catch (Exception e) {
+                              runOnUiThread(() -> Toast.makeText(MainActivity.this, "خطا: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                          }
+                      }
+                  }, "AndroidDownloader");
+              }
+          }
+          EOF
+
+      - name: Sync Web Assets & Build Debug APK
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MC-Texture-Studio-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
